@@ -24,7 +24,7 @@ generate(
 
 ![First example.](./examples/1.png)
 
-```
+```py
 from voronoi import generate
 
 generate(
