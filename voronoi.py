@@ -123,6 +123,11 @@ class Utilities:
     def success(message):
         print(f"\u001b[38;5;2mSUCCESS:\u001b[0m {message}", flush=True)
 
+    def hex_to_tuple(color: str):
+        color = color.strip("#")
+        return (int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16))
+
+
 def generate(
         path: str,
         regions: int,
@@ -133,6 +138,8 @@ def generate(
         distance_algorithm = DistanceAlgorithm.euclidean,
         no_same_adjacent_colors: bool = False,
         seed = None,
+        border_size = 0,
+        border_color = "#FFFFFF",
 ):
     # check for correct region count
     if width * height < regions:
@@ -153,9 +160,7 @@ def generate(
     i = 0
     while i < len(colors):
         if type(colors[i]) == str:
-            color = colors[i].strip("#")
-
-            colors[i] = (int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16))
+            colors[i] = Utilities.hex_to_tuple(colors[i])
 
         i += 1
 
@@ -228,6 +233,25 @@ def generate(
     for x in range(width):
         for y in range(height):
             pil_image.putpixel((x, y), region_colors[image[x][y]])
+
+    # possibly create the border
+    if border_size != 0:
+        r = border_size // 2
+
+        if type(border_color) == str:
+            border_color = Utilities.hex_to_tuple(border_color)
+
+        for x in range(width):
+            for y in range(height):
+                for dx, dy in ((0, 1), (1, 0)):
+                    xn, yn = x + dx, y + dy
+
+                    if not 0 <= xn < width or not 0 <= yn < height:
+                        continue
+
+                    if image[x][y] != image[xn][yn]:
+                        draw = ImageDraw.Draw(pil_image)
+                        draw.ellipse((x-r, y-r, x+r, y+r), fill=(*border_color,0))
 
     pil_image.save(path, "PNG")
     Utilities.success(f"File saved to {path}")

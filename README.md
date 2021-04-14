@@ -14,14 +14,16 @@ pip install -r requirements.txt
 - `width`: the width of the image; defaults to **1920**
 - `height`: the height of the image; defaults to **1080**
 - `region_algorithm`: the algorithm that determines the centers of the regions:
-	- `RegionAlgorithm.uniform` attempts to make the centers equidistant to one another
+	- `RegionAlgorithm.uniform` attempts to make the centers equidistant to one another; **default**
 	- `RegionAlgorithm.randomized` makes the center positions entirely random
 - `distance_algorithm`: the algorithm that determines the way the distance is measured
-	- `DistanceAlgorithm.euclidean`: standard euclidean distance (hypotenuse)
+	- `DistanceAlgorithm.euclidean`: standard euclidean distance (hypotenuse); **default**
 	- `DistanceAlgorithm.manhattan`: Manhattan (taxicab) distance (4 directions)
 	- `DistanceAlgorithm.chebyshev`: Chebyshev distance (8 directions)
 - `no_same_adjacent_colors`: makes it so that no two adjacent regions share a color; **False** by default, since it can take a significant amount of time for diagrams with a large number of regions
 - `seed`: the seed for the random number generator
+- `border_size`: the thickness of the border (in pixels), defaults to **0** (no border)
+- `border_color`: the color of the border, defaults to **#FFFFFF** (white)
 
 ## Examples
 
@@ -46,7 +48,8 @@ from voronoi import *
 generate(
     path = "2.png",
     regions = 30,
-    colors = ["#91db57", "#57d3db", "#5770db", "#a157db", "#db57b2"],
+    colors = ["#91db57", "#57d3db", "#5770db", "#a157db"],
+    border_size = 20,
 )
 ```
 
