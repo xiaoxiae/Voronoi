@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 
 class Constant:
-    manhattonian_steps = ((0, 1), (1, 0), (-1, 0), (0, -1))
+    manhattan_steps = ((0, 1), (1, 0), (-1, 0), (0, -1))
     chebyshev_steps = ((0, 1), (1, 0), (-1, 0), (0, -1), (-1, -1), (-1, 1), (1, -1), (1, 1))
 
 
@@ -79,9 +79,9 @@ class DistanceAlgorithm:
                         d_min = d
                         image[x][y] = id(region)
 
-    def manhattonian(*args):
-        """Calculate the image regions using manhattonian distance."""
-        DistanceAlgorithm._bfs(*args, Constant.manhattonian_steps)
+    def manhattan(*args):
+        """Calculate the image regions using manhattan distance."""
+        DistanceAlgorithm._bfs(*args, Constant.manhattan_steps)
 
     def chebyshev(*args):
         """Calculate the image regions using chebyshev distance."""
@@ -174,7 +174,7 @@ def generate(
 
         for x in range(width):
             for y in range(height):
-                for xd, yd in Constant.manhattonian_steps:
+                for xd, yd in Constant.manhattan_steps:
                     xn, yn = x + xd, y + yd
 
                     if not 0 <= xn < width or not 0 <= yn < height:
@@ -216,7 +216,7 @@ def generate(
         status = model.solve(PULP_CBC_CMD(msg=False))
 
         if chromatic_number.value() > len(colors):
-            error("Not enough colors to color without adjacent areas having the same one!")
+            Utilities.error("Not enough colors to color without adjacent areas having the same one!")
 
         region_colors = {mapping[variable + 1]: colors[color]
                 for variable in range(n)

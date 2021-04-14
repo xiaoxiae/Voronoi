@@ -7,10 +7,26 @@ git clone https://github.com/xiaoxiae/Voronoi.git
 pip install -r requirements.txt
 ```
 
+## Options
+- `path`: the path (including an extension) to save the resulting file to
+- `regions`: the number of distinct regions in the diagram
+- `colors`: a list of tuples denoting the RGB of the color, or strings denoting the color in hex
+- `width`: the width of the image; defaults to **1920**
+- `height`: the height of the image; defaults to **1080**
+- `region_algorithm`: the algorithm that determines the centers of the regions:
+	- `RegionAlgorithm.uniform` attempts to make the centers equidistant to one another
+	- `RegionAlgorithm.randomized` makes the center positions entirely random
+- `distance_algorithm`: the algorithm that determines the way the distance is measured
+	- `DistanceAlgorithm.euclidean`: standard euclidean distance (hypotenuse)
+	- `DistanceAlgorithm.manhattan`: Manhattan (taxicab) distance (4 directions)
+	- `DistanceAlgorithm.chebyshev`: Chebyshev distance (8 directions)
+- `no_same_adjacent_colors`: makes it so that no two adjacent regions share a color; **False** by default, since it can take a significant amount of time for diagrams with a large number of regions
+- `seed`: the seed for the random number generator
+
 ## Examples
 
 ```py
-from voronoi import generate
+from voronoi *
 
 generate(
     path = "1.png",
@@ -25,7 +41,7 @@ generate(
 ![First example.](./examples/1.png)
 
 ```py
-from voronoi import generate
+from voronoi *
 
 generate(
     path = "2.png",
@@ -35,3 +51,17 @@ generate(
 ```
 
 ![Second example.](./examples/2.png)
+
+```py
+from voronoi import *
+
+generate(
+    path = "3.png",
+    regions = 50,
+    colors = ["78c9b1", "3eab71", "27904d", "006127"],
+    no_same_adjacent_colors = True,
+    distance_algorithm = DistanceAlgorithm.manhattan,
+)
+```
+
+![Third example.](./examples/3.png)

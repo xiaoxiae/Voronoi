@@ -1,4 +1,4 @@
-from voronoi import generate
+from voronoi import *
 
 generate(
     path = "2.png",
