@@ -4,7 +4,7 @@ from typing import *
 from math import hypot
 from queue import Queue
 from dataclasses import dataclass
-
+import os
 
 class Constant:
     manhattan_steps = ((0, 1), (1, 0), (-1, 0), (0, -1))
@@ -26,7 +26,7 @@ class RegionAlgorithm:
         return points
 
     def uniform(width: int, height: int, regions: int) -> List[Tuple[int, int]]:
-        """Return regions that attempt to be somewhat uniform. Picks """
+        """Return regions that attempt to be somewhat uniform."""
         k = 10
         points = []
         while len(points) != regions:
@@ -64,8 +64,9 @@ class RegionAlgorithm:
 
 class DistanceAlgorithm:
     def euclidean(width: int, height: int,
-            region_centers: List[Tuple[int, int]], image: List[List[int]]):
-        """Calculate the image regions using euclidean distance."""
+            region_centers: List[Tuple[int, int]], image: List[List[int]],
+            d_limit: int):
+        """Calculate the image regions (up to a distance) using euclidean distance."""
 
         for x in range(width):
             for y in range(height):
@@ -77,7 +78,9 @@ class DistanceAlgorithm:
 
                     if d < d_min:
                         d_min = d
-                        image[x][y] = id(region)
+
+                        if d <= d_limit:
+                            image[x][y] = id(region)
 
     def manhattan(*args):
         """Calculate the image regions using manhattan distance."""
@@ -89,15 +92,19 @@ class DistanceAlgorithm:
 
     def _bfs(width: int, height: int,
             region_centers: List[Tuple[int, int]], image: List[List[int]],
+            d_limit: int,
             steps):
         """Calculate the image regions using some sort of BFS."""
         queue = Queue()
 
         for region in region_centers:
-            queue.put((*region, id(region)))
+            queue.put((*region, id(region), d_limit))
 
         while not queue.empty():
-            x, y, i = queue.get()
+            x, y, i, d = queue.get()
+
+            if d == 0:
+                continue
 
             for dx, dy in steps:
                 xn, yn = x + dx, y + dy
@@ -107,7 +114,7 @@ class DistanceAlgorithm:
 
                 if image[xn][yn] == None:
                     image[xn][yn] = i
-                    queue.put((xn, yn, i))
+                    queue.put((xn, yn, i, d - 1))
 
 
 class Utilities:
@@ -127,49 +134,7 @@ class Utilities:
         color = color.strip("#")
         return (int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16))
 
-
-def generate(
-        path: str,
-        regions: int,
-        colors: List[Union[Tuple[int, int, int], str]],
-        width: int = 1920,
-        height: int = 1080,
-        region_algorithm = RegionAlgorithm.uniform,
-        distance_algorithm = DistanceAlgorithm.euclidean,
-        no_same_adjacent_colors: bool = False,
-        seed = None,
-        border_size = 0,
-        border_color = "#FFFFFF",
-):
-    # check for correct region count
-    if width * height < regions:
-        Utilities.error("Not enough pixels for the number of regions.")
-
-    # possibly seed the random algorithm
-    if seed is not None:
-        randomseed(seed)
-
-    Utilities.info("Calculating region centers.")
-    region_centers = region_algorithm(width, height, regions)
-
-    image = [[None] * height for _ in range(width)]
-    Utilities.info("Calculating region areas.")
-    distance_algorithm(width, height, region_centers, image)
-
-    # possibly convert string colors to tuples
-    i = 0
-    while i < len(colors):
-        if type(colors[i]) == str:
-            colors[i] = Utilities.hex_to_tuple(colors[i])
-
-        i += 1
-
-    # either assign colors randomly, or calculate the chromatic number and assign them then
-    if not no_same_adjacent_colors:
-        Utilities.info("Assigning region colors.")
-        region_colors = {id(region): choice(colors) for region in region_centers}
-    else:
-        Utilities.info("Assigning region colors such that no two adjacent regions have the same color.")
+    def get_different_adjacent_colors(width, height, image, colors):
         from pulp import LpProblem, LpVariable, LpMinimize, lpSum, PULP_CBC_CMD
 
         edges = set()
@@ -223,19 +188,12 @@ def generate(
         if chromatic_number.value() > len(colors):
             Utilities.error("Not enough colors to color without adjacent areas having the same one!")
 
-        region_colors = {mapping[variable + 1]: colors[color]
+        return {mapping[variable + 1]: colors[color]
                 for variable in range(n)
                 for color in range(n)
                 if variables[variable][color].value() == 1}
 
-    pil_image = Image.new("RGB", (width, height))
-
-    for x in range(width):
-        for y in range(height):
-            pil_image.putpixel((x, y), region_colors[image[x][y]])
-
-    # possibly create the border
-    if border_size != 0:
+    def add_border(border_color, border_size, read_image, write_image, width, height):
         r = border_size // 2
 
         if type(border_color) == str:
@@ -249,9 +207,105 @@ def generate(
                     if not 0 <= xn < width or not 0 <= yn < height:
                         continue
 
-                    if image[x][y] != image[xn][yn]:
-                        draw = ImageDraw.Draw(pil_image)
+                    if read_image[x][y] != read_image[xn][yn]:
+                        draw = ImageDraw.Draw(write_image)
                         draw.ellipse((x-r, y-r, x+r, y+r), fill=(*border_color,0))
 
-    pil_image.save(path, "PNG")
-    Utilities.success(f"File saved to {path}")
+
+def generate(
+        path: str,
+        regions: int,
+        colors: List[Union[Tuple[int, int, int], str]],
+        width: int = 1920,
+        height: int = 1080,
+        region_algorithm = RegionAlgorithm.uniform,
+        distance_algorithm = DistanceAlgorithm.euclidean,
+        no_same_adjacent_colors: bool = False,
+        seed = None,
+        border_size = 0,
+        border_color = "#FFFFFF",
+        animate_fill = False,
+        animation_background = "#FFFFFF",
+):
+    # possibly seed the random algorithm
+    if seed is not None:
+        randomseed(seed)
+
+    if type(regions) == list:
+        Utilities.info("Region centers provided, skipping generation.")
+
+        # flip vertically!
+        region_centers = [(int(center[0] * width), int(height - center[1] * height)) for center in regions]
+    else:
+        # check for correct region count
+        if width * height < regions:
+            Utilities.error("Not enough pixels for the number of regions.")
+
+        Utilities.info("Calculating region centers.")
+        region_centers = region_algorithm(width, height, regions)
+
+    image = [[None] * height for _ in range(width)]
+    Utilities.info("Calculating region areas.")
+    distance_algorithm(width, height, region_centers, image, float("inf"))
+
+    # possibly convert string colors to tuples
+    i = 0
+    while i < len(colors):
+        if type(colors[i]) == str:
+            colors[i] = Utilities.hex_to_tuple(colors[i])
+
+        i += 1
+
+    # either assign colors randomly, or calculate the chromatic number and assign them then
+    if not no_same_adjacent_colors:
+        Utilities.info("Assigning region colors.")
+        region_colors = {id(region): choice(colors) for region in region_centers}
+    else:
+        Utilities.info("Assigning region colors such that no two adjacent regions have the same color.")
+        region_colors = Utilities.get_different_adjacent_colors(width, height, image, colors)
+
+    # the original, full image (without borders)
+    pil_image = Image.new("RGB", (width, height))
+    for x in range(width):
+        for y in range(height):
+            pil_image.putpixel((x, y), region_colors[image[x][y]])
+
+    if border_size != 0:
+        Utilities.add_border(border_color, border_size, image, pil_image, width, height)
+
+    if animate_fill:
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        d = 1
+
+        if type(animation_background) == str:
+            animation_background = Utilities.hex_to_tuple(animation_background)
+
+        while True:
+            animation_image = [[None] * height for _ in range(width)]
+            distance_algorithm(width, height, region_centers, animation_image, d)
+
+            animation_pil_image = Image.new("RGB", (width, height))
+
+            for x in range(width):
+                for y in range(height):
+                    animation_pil_image.putpixel((x, y), animation_background if animation_image[x][y] is None else region_colors[image[x][y]])
+
+            if border_size != 0:
+                Utilities.add_border(border_color, border_size, animation_image, animation_pil_image, width, height)
+
+            animation_path = os.path.join(path, f"{d}.png")
+
+            animation_pil_image.save(animation_path, "PNG")
+            Utilities.success(f"Animation image saved to {animation_path}")
+
+            d += 1
+
+            if image == animation_image:
+                Utilities.success(f"Done!")
+                break
+
+    else:
+        pil_image.save(path, "PNG")
+        Utilities.success(f"Image saved to {path}!")

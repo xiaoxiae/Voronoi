@@ -21,9 +21,11 @@ pip install -r requirements.txt
 	- `DistanceAlgorithm.manhattan`: Manhattan (taxicab) distance (4 directions)
 	- `DistanceAlgorithm.chebyshev`: Chebyshev distance (8 directions)
 - `no_same_adjacent_colors`: makes it so that no two adjacent regions share a color; **False** by default, since it can take a significant amount of time for diagrams with a large number of regions
-- `seed`: the seed for the random number generator
-- `border_size`: the thickness of the border (in pixels), defaults to **0** (no border)
-- `border_color`: the color of the border, defaults to **#FFFFFF** (white)
+- `seed`: the seed for the random number generator; no seed by default
+- `border_size`: the thickness of the border (in pixels); defaults to **0** (no border)
+- `border_color`: the color of the border, defaults to `#FFFFFF` (white)
+- `animate_fill`: creates images in the folder `path` of the regions filling in; defaults to **False**
+- `animation_background`: background of the animation; defaults to `#FFFFFF`
 
 ## Examples
 
