@@ -79,6 +79,7 @@ generate(
     no_same_adjacent_colors = True,
     distance_algorithm = DistanceAlgorithm.chebyshev,
     border_size = 20,
+    border_color = "#093987",
 )
 ```
 
