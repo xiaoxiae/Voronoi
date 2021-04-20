@@ -1,2 +1,4 @@
 pillow
 pulp
+svgwrite
+shapely
