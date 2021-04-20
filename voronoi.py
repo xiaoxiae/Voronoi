@@ -1,14 +1,17 @@
 from PIL import Image, ImageColor, ImageDraw
 from random import randint, choice, seed as randomseed
 from typing import *
-from math import hypot
+from math import hypot, sqrt
 from queue import Queue
 from dataclasses import dataclass
+from enum import Enum
 import os
 
-class Constant:
-    manhattan_steps = ((0, 1), (1, 0), (-1, 0), (0, -1))
-    chebyshev_steps = ((0, 1), (1, 0), (-1, 0), (0, -1), (-1, -1), (-1, 1), (1, -1), (1, 1))
+
+class ColorAlgorithm(Enum):
+    random           = 1
+    no_adjacent_same = 2
+    least_possible   = 3
 
 
 class RegionAlgorithm:
@@ -63,59 +66,39 @@ class RegionAlgorithm:
 
 
 class DistanceAlgorithm:
-    def euclidean(width: int, height: int,
-            region_centers: List[Tuple[int, int]], image: List[List[int]],
-            d_limit: int):
+    def euclidean(*args):
         """Calculate the image regions (up to a distance) using euclidean distance."""
+        DistanceAlgorithm._set_each_point(*args, lambda x, y, xn, yn: hypot(xn-x, yn-y))
 
+    def manhattan(*args):
+        """Calculate the image regions using manhattan distance."""
+        DistanceAlgorithm._set_each_point(*args, lambda x, y, xn, yn: abs(xn-x) + abs(yn-y))
+
+    def euclidean45degrees(*args):
+        """Calculate the image regions using euclidean, but allow only lines in 45 degree increments."""
+        DistanceAlgorithm._set_each_point(*args, lambda x, y, xn, yn: sqrt(2 * min(abs(xn-x), abs(yn-y)) ** 2) + abs(abs(xn-x) - abs(yn-y)))
+
+    def chebyshev(*args):
+        """Calculate the image regions using chebyshev distance."""
+        DistanceAlgorithm._set_each_point(*args, lambda x, y, xn, yn: min(abs(xn-x), abs(yn-y)) + abs(abs(xn-x) - abs(yn-y)))
+
+    def _set_each_point(width: int, height: int,
+            region_centers: List[Tuple[int, int]], image: List[List[int]],
+            d_limit: int, f: Callable[[int, int, int, int], float]):
+        """Calculate the image regions (up to a distance) using the provided metric."""
         for x in range(width):
             for y in range(height):
                 d_min = float('inf')
 
                 for region in region_centers:
-                    nx, ny = region
-                    d = hypot(nx-x, ny-y)
+                    xn, yn = region
+                    d = f(x, y, xn, yn)
 
                     if d < d_min:
                         d_min = d
 
                         if d <= d_limit:
                             image[x][y] = id(region)
-
-    def manhattan(*args):
-        """Calculate the image regions using manhattan distance."""
-        DistanceAlgorithm._bfs(*args, Constant.manhattan_steps)
-
-    def chebyshev(*args):
-        """Calculate the image regions using chebyshev distance."""
-        DistanceAlgorithm._bfs(*args, Constant.chebyshev_steps)
-
-    def _bfs(width: int, height: int,
-            region_centers: List[Tuple[int, int]], image: List[List[int]],
-            d_limit: int,
-            steps):
-        """Calculate the image regions using some sort of BFS."""
-        queue = Queue()
-
-        for region in region_centers:
-            queue.put((*region, id(region), d_limit))
-
-        while not queue.empty():
-            x, y, i, d = queue.get()
-
-            if d == 0:
-                continue
-
-            for dx, dy in steps:
-                xn, yn = x + dx, y + dy
-
-                if not 0 <= xn < width or not 0 <= yn < height:
-                    continue
-
-                if image[xn][yn] == None:
-                    image[xn][yn] = i
-                    queue.put((xn, yn, i, d - 1))
-
 
 class Utilities:
     def error(message, q=True):
@@ -134,7 +117,7 @@ class Utilities:
         color = color.strip("#")
         return (int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16))
 
-    def get_different_adjacent_colors(width, height, image, colors):
+    def get_different_adjacent_colors(width, height, image, colors, color_algorithm):
         from pulp import LpProblem, LpVariable, LpMinimize, lpSum, PULP_CBC_CMD
 
         edges = set()
@@ -144,7 +127,7 @@ class Utilities:
 
         for x in range(width):
             for y in range(height):
-                for xd, yd in Constant.manhattan_steps:
+                for xd, yd in ((0, 1), (1, 0), (-1, 0), (0, -1)):
                     xn, yn = x + xd, y + yd
 
                     if not 0 <= xn < width or not 0 <= yn < height:
@@ -181,7 +164,10 @@ class Utilities:
             for j in range(n):
                 model += chromatic_number >= (j + 1) * variables[i][j]
 
-        model += chromatic_number
+        if color_algorithm == ColorAlgorithm.least_possible:
+            model += chromatic_number
+        else:
+            model += chromatic_number == len(colors)
 
         status = model.solve(PULP_CBC_CMD(msg=False))
 
@@ -220,7 +206,7 @@ def generate(
         height: int = 1080,
         region_algorithm = RegionAlgorithm.uniform,
         distance_algorithm = DistanceAlgorithm.euclidean,
-        no_same_adjacent_colors: bool = False,
+        color_algorithm = ColorAlgorithm.random,
         seed = None,
         border_size = 0,
         border_color = "#FFFFFF",
@@ -257,12 +243,12 @@ def generate(
         i += 1
 
     # either assign colors randomly, or calculate the chromatic number and assign them then
-    if not no_same_adjacent_colors:
+    if color_algorithm == ColorAlgorithm.random:
         Utilities.info("Assigning region colors.")
         region_colors = {id(region): choice(colors) for region in region_centers}
     else:
         Utilities.info("Assigning region colors such that no two adjacent regions have the same color.")
-        region_colors = Utilities.get_different_adjacent_colors(width, height, image, colors)
+        region_colors = Utilities.get_different_adjacent_colors(width, height, image, colors, color_algorithm)
 
     # the original, full image (without borders)
     pil_image = Image.new("RGB", (width, height))

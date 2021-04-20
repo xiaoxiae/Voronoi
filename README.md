@@ -20,7 +20,11 @@ pip install -r requirements.txt
 	- `DistanceAlgorithm.euclidean`: standard euclidean distance (hypotenuse); **default**
 	- `DistanceAlgorithm.manhattan`: Manhattan (taxicab) distance (4 directions)
 	- `DistanceAlgorithm.chebyshev`: Chebyshev distance (8 directions)
-- `no_same_adjacent_colors`: makes it so that no two adjacent regions share a color; **False** by default, since it can take a significant amount of time for diagrams with a large number of regions
+	- `DistanceAlgorithm.euclidean45degrees`: euclidean distance, but lines can only point in 45 degree increments
+- `color_algorithm`: the algorithm that determines the colors of the regions
+	- `DistanceAlgorithm.random`: pick the colors randomly
+	- `DistanceAlgorithm.no_adjacent_same`: pick the colors such that no two adjacent regions have the same color
+	- `DistanceAlgorithm.least_possible`: same as `no_adjacent_same`, but attempt to do so in the least number of colors
 - `seed`: the seed for the random number generator; no seed by default
 - `border_size`: the thickness of the border (in pixels); defaults to **0** (no border)
 - `border_color`: the color of the border, defaults to `#FFFFFF` (white)
@@ -38,7 +42,7 @@ generate(
     height = 2160,
     regions = 70,
     colors = [(0, 0, 0), (15, 15, 15), (23, 23, 23), (30, 30, 30)],
-    no_same_adjacent_colors = True,
+    color_algorithm = ColorAlgorithm.no_adjacent_same,
 )
 ```
 
@@ -64,8 +68,8 @@ generate(
     path = "3.png",
     regions = 50,
     colors = ["#78c9b1", "#3eab71", "#27904d", "#006127"],
-    no_same_adjacent_colors = True,
     distance_algorithm = DistanceAlgorithm.manhattan,
+    color_algorithm = ColorAlgorithm.no_adjacent_same,
 )
 ```
 
@@ -78,12 +82,26 @@ generate(
     path = "4.png",
     regions = 50,
     colors = ["#1d63db", "#155ad0", "#0c4dbd", "#10459f"],
-    no_same_adjacent_colors = True,
     distance_algorithm = DistanceAlgorithm.chebyshev,
     border_size = 20,
     border_color = "#093987",
+    color_algorithm = ColorAlgorithm.no_adjacent_same,
 )
 ```
 
 ![Fourth example.](./examples/4.png)
 
+
+```py
+from voronoi import *
+
+generate(
+    path = "5.png",
+    regions = 30,
+    colors = ["#ffbec6", "#ffa4b4", "#ff7a92", "#ff5270", "#ff1e44"],
+    distance_algorithm=DistanceAlgorithm.euclidean45degrees,
+    color_algorithm = ColorAlgorithm.no_adjacent_same,
+)
+```
+
+![Fifth example.](./examples/5.png)
