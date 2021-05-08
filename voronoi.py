@@ -1,5 +1,5 @@
 from PIL import Image, ImageColor, ImageDraw
-from random import randint, choice, seed as randomseed
+from random import randint, choice, random, seed as randomseed
 from typing import *
 from math import hypot, sqrt
 from queue import Queue
@@ -66,33 +66,37 @@ class RegionAlgorithm:
 
 
 class DistanceAlgorithm:
-    def euclidean(*args):
+    def euclidean(x, y, xn, yn):
         """Calculate the image regions (up to a distance) using euclidean distance."""
-        DistanceAlgorithm._set_each_point(*args, lambda x, y, xn, yn: hypot(xn-x, yn-y))
+        return hypot(xn-x, yn-y)
 
-    def manhattan(*args):
+    def manhattan(x, y, xn, yn):
         """Calculate the image regions using manhattan distance."""
-        DistanceAlgorithm._set_each_point(*args, lambda x, y, xn, yn: abs(xn-x) + abs(yn-y))
+        return abs(xn-x) + abs(yn-y)
 
-    def euclidean45degrees(*args):
+    def euclidean45degrees(x, y, xn, yn):
         """Calculate the image regions using euclidean, but allow only lines in 45 degree increments."""
-        DistanceAlgorithm._set_each_point(*args, lambda x, y, xn, yn: sqrt(2 * min(abs(xn-x), abs(yn-y)) ** 2) + abs(abs(xn-x) - abs(yn-y)))
+        return sqrt(2 * min(abs(xn-x), abs(yn-y)) ** 2) + abs(abs(xn-x) - abs(yn-y))
 
-    def chebyshev(*args):
+    def chebyshev(x, y, xn, yn):
         """Calculate the image regions using chebyshev distance."""
-        DistanceAlgorithm._set_each_point(*args, lambda x, y, xn, yn: min(abs(xn-x), abs(yn-y)) + abs(abs(xn-x) - abs(yn-y)))
+        return min(abs(xn-x), abs(yn-y)) + abs(abs(xn-x) - abs(yn-y))
 
-    def _set_each_point(width: int, height: int,
+    def set_each_point(seed: int, width: int, height: int,
             region_centers: List[Tuple[int, int]], image: List[List[int]],
-            d_limit: int, f: Callable[[int, int, int, int], float]):
+            d_limit: int, f: List[Callable[[int, int, int, int], float]]):
         """Calculate the image regions (up to a distance) using the provided metric."""
+        randomseed(seed)
+
+        region_distance_functions = [f if not isinstance(f, list) else choice(f) for _ in range(len(region_centers))]
+
         for x in range(width):
             for y in range(height):
                 d_min = float('inf')
 
-                for region in region_centers:
+                for i, region in enumerate(region_centers):
                     xn, yn = region
-                    d = f(x, y, xn, yn)
+                    d = region_distance_functions[i](x, y, xn, yn)
 
                     if d < d_min:
                         d_min = d
@@ -207,15 +211,17 @@ def generate(
         region_algorithm = RegionAlgorithm.uniform,
         distance_algorithm = DistanceAlgorithm.euclidean,
         color_algorithm = ColorAlgorithm.random,
-        seed = None,
-        border_size = 0,
+        seed: Optional[int] = None,
+        border_size: int = 0,
         border_color = "#FFFFFF",
-        animate_fill = False,
+        animate = False,
         animation_background = "#FFFFFF",
 ):
     # possibly seed the random algorithm
-    if seed is not None:
-        randomseed(seed)
+    if seed is None:
+        seed = random()
+
+    randomseed(seed)
 
     if type(regions) == list:
         Utilities.info("Region centers provided, skipping generation.")
@@ -232,7 +238,7 @@ def generate(
 
     image = [[None] * height for _ in range(width)]
     Utilities.info("Calculating region areas.")
-    distance_algorithm(width, height, region_centers, image, float("inf"))
+    DistanceAlgorithm.set_each_point(seed, width, height, region_centers, image, float("inf"), distance_algorithm)
 
     # possibly convert string colors to tuples
     i = 0
@@ -259,7 +265,7 @@ def generate(
     if border_size != 0:
         Utilities.add_border(border_color, border_size, image, pil_image, width, height)
 
-    if animate_fill:
+    if animate:
         if not os.path.exists(path):
             os.makedirs(path)
 
@@ -270,7 +276,7 @@ def generate(
 
         while True:
             animation_image = [[None] * height for _ in range(width)]
-            distance_algorithm(width, height, region_centers, animation_image, d)
+            DistanceAlgorithm.set_each_point(seed, width, height, region_centers, animation_image, d, distance_algorithm)
 
             animation_pil_image = Image.new("RGB", (width, height))
 

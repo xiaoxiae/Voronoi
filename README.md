@@ -16,7 +16,7 @@ pip install -r requirements.txt
 - `region_algorithm`: the algorithm that determines the centers of the regions:
 	- `RegionAlgorithm.uniform` attempts to make the centers equidistant to one another; **default**
 	- `RegionAlgorithm.randomized` makes the center positions entirely random
-- `distance_algorithm`: the algorithm that determines the way the distance is measured
+- `distance_algorithm`: the algorithm that determines the way the distance is measured; if a list of the algorithms is provided, a random one is picked for each point
 	- `DistanceAlgorithm.euclidean`: standard euclidean distance (hypotenuse); **default**
 	- `DistanceAlgorithm.manhattan`: Manhattan (taxicab) distance (4 directions)
 	- `DistanceAlgorithm.chebyshev`: Chebyshev distance (8 directions)
@@ -28,7 +28,7 @@ pip install -r requirements.txt
 - `seed`: the seed for the random number generator; no seed by default
 - `border_size`: the thickness of the border (in pixels); defaults to **0** (no border)
 - `border_color`: the color of the border, defaults to `#FFFFFF` (white)
-- `animate_fill`: creates images in the folder `path` of the regions filling in; defaults to **False**
+- `animate`: creates images in the folder `path` of the regions filling in; defaults to **False**
 - `animation_background`: background of the animation; defaults to `#FFFFFF`
 
 ## Examples
