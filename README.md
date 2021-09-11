@@ -1,5 +1,5 @@
 # Voronoi
-A simple Python library for generationg various kinds of Voronoi diagrams.
+A simple Python library for generating various kinds of Voronoi diagrams.
 
 To install, run:
 ```
