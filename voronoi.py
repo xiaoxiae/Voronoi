@@ -299,5 +299,5 @@ def generate(
                 break
 
     else:
-        pil_image.save(path, "PNG")
+        pil_image.save(path)
         Utilities.success(f"Image saved to {path}!")
