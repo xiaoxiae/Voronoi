@@ -299,5 +299,5 @@ def generate(
                 break
 
     else:
-        pil_image.save(path)
+        pil_image.save(path, resolution=300)
         Utilities.success(f"Image saved to {path}!")
