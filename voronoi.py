@@ -5,7 +5,9 @@ from math import hypot, sqrt
 from queue import Queue
 from dataclasses import dataclass
 from enum import Enum
+
 import os
+import sys
 
 
 class ColorAlgorithm(Enum):
@@ -15,7 +17,7 @@ class ColorAlgorithm(Enum):
 
 
 class RegionAlgorithm:
-    def randomized(width: int, height: int, regions: int) -> List[Tuple[int, int]]:
+    def randomized(width: int, height: int, regions: int, mask_function) -> List[Tuple[int, int]]:
         """Return regions that are entirely random."""
         points = []
         while len(points) != regions:
@@ -24,11 +26,14 @@ class RegionAlgorithm:
             if p in points:
                 continue
 
+            if not mask_function(p):
+                continue
+
             points.append(p)
 
         return points
 
-    def uniform(width: int, height: int, regions: int) -> List[Tuple[int, int]]:
+    def uniform(width: int, height: int, regions: int, mask_function) -> List[Tuple[int, int]]:
         """Return regions that attempt to be somewhat uniform."""
         k = 10
         points = []
@@ -36,10 +41,14 @@ class RegionAlgorithm:
             best_p = None
             d_max = 0
 
-            for _ in range(k * len(points) + 1):
+            i = 0
+            while i < k * len(points) + 1:
                 p = (randint(0, width - 1), randint(0, height - 1))
 
                 if p in points:
+                    continue
+
+                if not mask_function(p):
                     continue
 
                 if len(points) == 0:
@@ -57,8 +66,7 @@ class RegionAlgorithm:
                     d_max = d_min
                     best_p = p
 
-            if best_p is None:
-                continue
+                i += 1
 
             points.append(best_p)
 
@@ -84,7 +92,7 @@ class DistanceAlgorithm:
 
     def set_each_point(seed: int, width: int, height: int,
             region_centers: List[Tuple[int, int]], image: List[List[int]],
-            d_limit: int, f: List[Callable[[int, int, int, int], float]]):
+            d_limit: int, f: List[Callable[[int, int, int, int], float]], mask_function):
         """Calculate the image regions (up to a distance) using the provided metric."""
         randomseed(seed)
 
@@ -92,6 +100,9 @@ class DistanceAlgorithm:
 
         for x in range(width):
             for y in range(height):
+                if not mask_function((x, y)):
+                    continue
+
                 d_min = float('inf')
 
                 for i, region in enumerate(region_centers):
@@ -109,7 +120,10 @@ class Utilities:
         print(f"\u001b[38;5;1mERROR:\u001b[0m {message}", flush=True)
 
         if q:
-            quit()
+            sys.exit(1)
+
+    def warning(message):
+        print(f"\u001b[38;5;208mWARNING:\u001b[0m {message}", flush=True)
 
     def info(message):
         print(f"\u001b[38;5;11mINFO:\u001b[0m {message}", flush=True)
@@ -138,6 +152,9 @@ class Utilities:
                         continue
 
                     i1, i2 = image[x][y], image[xn][yn]
+
+                    if i1 is None or i2 is None:
+                        continue
 
                     if i1 < i2:
                         if i1 not in mapping:
@@ -183,29 +200,32 @@ class Utilities:
                 for color in range(n)
                 if variables[variable][color].value() == 1}
 
-    def add_border(border_color, border_size, read_image, write_image, width, height):
+    def add_border(background, border_size, read_image, write_image, width, height, mask_function):
         r = border_size // 2
-
-        if type(border_color) == str:
-            border_color = Utilities.hex_to_tuple(border_color)
 
         for x in range(width):
             for y in range(height):
+                if not mask_function((x, y)):
+                    continue
+
                 for dx, dy in ((0, 1), (1, 0)):
                     xn, yn = x + dx, y + dy
 
                     if not 0 <= xn < width or not 0 <= yn < height:
                         continue
 
+                    if not mask_function((xn, yn)):
+                        continue
+
                     if read_image[x][y] != read_image[xn][yn]:
                         draw = ImageDraw.Draw(write_image)
-                        draw.ellipse((x-r, y-r, x+r, y+r), fill=(*border_color,0))
+                        draw.ellipse((x-r, y-r, x+r, y+r), fill=(*background,0))
 
 
 def generate(
         path: str,
         regions: int,
-        colors: List[Union[Tuple[int, int, int], str]],
+        colors: List[Union[Tuple[int], str]],
         width: int = 1920,
         height: int = 1080,
         region_algorithm = RegionAlgorithm.uniform,
@@ -213,32 +233,14 @@ def generate(
         color_algorithm = ColorAlgorithm.random,
         seed: Optional[int] = None,
         border_size: int = 0,
-        border_color = "#FFFFFF",
+        mask: Optional[str] = None,
+        mask_color = "#000000",
         animate = False,
-        animation_background = "#FFFFFF",
+        background = "#FFFFFF",
 ):
     # possibly seed the random algorithm
     if seed is None:
         seed = random()
-
-    randomseed(seed)
-
-    if type(regions) == list:
-        Utilities.info("Region centers provided, skipping generation.")
-
-        # flip vertically!
-        region_centers = [(int(center[0] * width), int(height - center[1] * height)) for center in regions]
-    else:
-        # check for correct region count
-        if width * height < regions:
-            Utilities.error("Not enough pixels for the number of regions.")
-
-        Utilities.info("Calculating region centers.")
-        region_centers = region_algorithm(width, height, regions)
-
-    image = [[None] * height for _ in range(width)]
-    Utilities.info("Calculating region areas.")
-    DistanceAlgorithm.set_each_point(seed, width, height, region_centers, image, float("inf"), distance_algorithm)
 
     # possibly convert string colors to tuples
     i = 0
@@ -248,6 +250,54 @@ def generate(
 
         i += 1
 
+    if type(mask_color) == str:
+        mask_color = Utilities.hex_to_tuple(mask_color)
+    elif type(mask_color) == list:
+        mask_color = tuple(mask_color)
+
+    if type(background) == str:
+        background = Utilities.hex_to_tuple(background)
+    elif type(background) == list:
+        background = tuple(background)
+
+    randomseed(seed)
+
+    mask_function = lambda p: True
+
+    if mask is not None:
+        try:
+            mask_img = Image.open(mask)
+            Utilities.info("Mask provided.")
+
+            w, h = mask_img.size
+
+            mask_function = lambda p: mask_img.getpixel(p) == mask_color
+
+            if w != width:
+                Utilities.warning("Specified width doesn't match mask width, using mask width.")
+                width = w
+
+            if h != height:
+                Utilities.warning("Specified height doesn't match mask height, using mask width.")
+                height = h
+
+
+        except Exception as e:
+            Utilities.error(f"Error loading mask from '{mask}'.")
+
+    if type(regions) == list:
+        Utilities.info("Region centers provided, skipping generation.")
+
+        # flip vertically!
+        region_centers = [(int(center[0] * width), int(height - center[1] * height)) for center in regions]
+    else:
+        Utilities.info("Calculating region centers.")
+        region_centers = region_algorithm(width, height, regions, mask_function)
+
+    image = [[None] * height for _ in range(width)]
+    Utilities.info("Calculating region areas.")
+    DistanceAlgorithm.set_each_point(seed, width, height, region_centers, image, float("inf"), distance_algorithm, mask_function)
+
     # either assign colors randomly, or calculate the chromatic number and assign them then
     if color_algorithm == ColorAlgorithm.random:
         Utilities.info("Assigning region colors.")
@@ -256,6 +306,9 @@ def generate(
         Utilities.info("Assigning region colors such that no two adjacent regions have the same color.")
         region_colors = Utilities.get_different_adjacent_colors(width, height, image, colors, color_algorithm)
 
+    # if we're masking, some regions won't be assigned
+    region_colors[None] = background
+
     # the original, full image (without borders)
     pil_image = Image.new("RGB", (width, height))
     for x in range(width):
@@ -263,7 +316,7 @@ def generate(
             pil_image.putpixel((x, y), region_colors[image[x][y]])
 
     if border_size != 0:
-        Utilities.add_border(border_color, border_size, image, pil_image, width, height)
+        Utilities.add_border(background, border_size, image, pil_image, width, height, mask_function)
 
     if animate:
         if not os.path.exists(path):
@@ -271,21 +324,18 @@ def generate(
 
         d = 1
 
-        if type(animation_background) == str:
-            animation_background = Utilities.hex_to_tuple(animation_background)
-
         while True:
             animation_image = [[None] * height for _ in range(width)]
-            DistanceAlgorithm.set_each_point(seed, width, height, region_centers, animation_image, d, distance_algorithm)
+            DistanceAlgorithm.set_each_point(seed, width, height, region_centers, animation_image, d, distance_algorithm, mask_function)
 
             animation_pil_image = Image.new("RGB", (width, height))
 
             for x in range(width):
                 for y in range(height):
-                    animation_pil_image.putpixel((x, y), animation_background if animation_image[x][y] is None else region_colors[image[x][y]])
+                    animation_pil_image.putpixel((x, y), background if animation_image[x][y] is None else region_colors[image[x][y]])
 
             if border_size != 0:
-                Utilities.add_border(border_color, border_size, animation_image, animation_pil_image, width, height)
+                Utilities.add_border(background, border_size, animation_image, animation_pil_image, width, height)
 
             animation_path = os.path.join(path, f"{d}.png")
 

@@ -1,35 +1,19 @@
 # Voronoi
 A simple Python library for generating various kinds of Voronoi diagrams.
 
+<p float="left" align="middle" >
+  <img src="./examples/1.png" width="100" />
+  <img src="./examples/2.png" width="100" /> 
+  <img src="./examples/3.png" width="100" />
+</p>
+
 To install, run:
 ```
 git clone https://github.com/xiaoxiae/Voronoi.git
 pip install -r requirements.txt
 ```
 
-## Options
-- `path`: the path (including an extension) to save the resulting file to
-- `regions`: the number of distinct regions in the diagram
-- `colors`: a list of tuples denoting the RGB of the color, or strings denoting the color in hex
-- `width`: the width of the image; defaults to **1920**
-- `height`: the height of the image; defaults to **1080**
-- `region_algorithm`: the algorithm that determines the centers of the regions:
-	- `RegionAlgorithm.uniform` attempts to make the centers equidistant to one another; **default**
-	- `RegionAlgorithm.randomized` makes the center positions entirely random
-- `distance_algorithm`: the algorithm that determines the way the distance is measured; if a list of the algorithms is provided, a random one is picked for each point
-	- `DistanceAlgorithm.euclidean`: standard euclidean distance (hypotenuse); **default**
-	- `DistanceAlgorithm.manhattan`: Manhattan (taxicab) distance (4 directions)
-	- `DistanceAlgorithm.chebyshev`: Chebyshev distance (8 directions)
-	- `DistanceAlgorithm.euclidean45degrees`: euclidean distance, but lines can only point in 45 degree increments
-- `color_algorithm`: the algorithm that determines the colors of the regions
-	- `DistanceAlgorithm.random`: pick the colors randomly
-	- `DistanceAlgorithm.no_adjacent_same`: pick the colors such that no two adjacent regions have the same color
-	- `DistanceAlgorithm.least_possible`: same as `no_adjacent_same`, but attempt to do so in the least number of colors
-- `seed`: the seed for the random number generator; no seed by default
-- `border_size`: the thickness of the border (in pixels); defaults to **0** (no border)
-- `border_color`: the color of the border, defaults to `#FFFFFF` (white)
-- `animate`: creates images in the folder `path` of the regions filling in; defaults to **False**
-- `animation_background`: background of the animation; defaults to `#FFFFFF`
+
 
 ## Examples
 
@@ -121,3 +105,29 @@ generate(
 ```
 
 ![Sixth example.](./examples/6.png)
+
+## `generate` function arguments
+- `path`: the path (including an extension) to save the resulting file to
+- `regions`: the number of distinct regions in the diagram
+- `colors`: a list of tuples denoting the RGB of the color, or strings denoting the color in hex
+- `width`: the width of the image; defaults to **1920**
+- `height`: the height of the image; defaults to **1080**
+- `region_algorithm`: the algorithm that determines the centers of the regions:
+	- `RegionAlgorithm.uniform` attempts to make the centers equidistant to one another; **default**
+	- `RegionAlgorithm.randomized` makes the center positions entirely random
+- `distance_algorithm`: the algorithm that determines the way the distance is measured; if a list of the algorithms is provided, a random one is picked for each point
+	- `DistanceAlgorithm.euclidean`: standard euclidean distance (hypotenuse); **default**
+	- `DistanceAlgorithm.manhattan`: Manhattan (taxicab) distance (4 directions)
+	- `DistanceAlgorithm.chebyshev`: Chebyshev distance (8 directions)
+	- `DistanceAlgorithm.euclidean45degrees`: euclidean distance, but lines can only point in 45 degree increments
+- `color_algorithm`: the algorithm that determines the colors of the regions
+	- `DistanceAlgorithm.random`: pick the colors randomly
+	- `DistanceAlgorithm.no_adjacent_same`: pick the colors such that no two adjacent regions have the same color
+	- `DistanceAlgorithm.least_possible`: same as `no_adjacent_same`, but attempt to do so in the least number of colors
+- `seed`: the seed for the random number generator; no seed by default
+- `border_size`: the thickness of the border (in pixels); defaults to **0** (no border)
+- `mask`: a path to an image mask so only specific areas are used
+- `mask_color`: the color of the mask to fill, ignoring everything else; defaults to **`#000000`**
+- `animate`: creates images in the folder `path` of the regions filling in; defaults to **False**
+- `background`: background of the animation/masking/borders; defaults to **`#FFFFFF`**
+
