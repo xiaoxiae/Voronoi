@@ -1,19 +1,14 @@
 # Voronoi
 A simple Python library for generating various kinds of Voronoi diagrams.
 
-<p float="left" align="middle" >
-  <img src="./examples/1.png" width="100" />
-  <img src="./examples/2.png" width="100" /> 
-  <img src="./examples/3.png" width="100" />
-</p>
+## Installation
 
-To install, run:
+To get the library (and its requirements), run:
 ```
 git clone https://github.com/xiaoxiae/Voronoi.git
+cd Voronoi
 pip install -r requirements.txt
 ```
-
-
 
 ## Examples
 
